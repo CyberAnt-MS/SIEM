@@ -1,0 +1,54 @@
+id: 6e134e17-5e20-440b-a9fa-24e095e34df3
+name: Bumblebee stings with ransomware - Injected process performing domain exploration activity
+description: |
+  'https://security.microsoft.com/threatanalytics3/048e866a-0a92-47b8-94ac-c47fe577cc33/analystreport?tid=ecdddbca-fce0-4812-91fc-ab27516b33fb
+
+  Look for processes injected by Cobalt Strike or Meterpreter named “wab.exe”, “wabmig.exe”, or “ImagingDevices.exe” that performs domain exploration and reconnaissance activity. Other campaigns will inject into these processes as well, so activity surfaced will be malicious and require investigation, it may not be specific to Bumblebee.'
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftDefenderforEndpoints
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - Persistence
+  - DefenseEvasion
+  - LateralMovement
+relevantTechniques:
+  - T1569
+  - T1554
+  - T1211
+  - T0843
+query: |
+  DeviceProcessEvents  
+  | where InitiatingProcessFileName has_any ('wab.exe','wabmig.exe','ImagingDevices.exe') and ProcessCommandLine has 'cmd.exe'
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: false
+    reopenClosedIncident: false
+    lookbackDuration: 5h
+    matchingMethod: AllEntities
+    groupByEntities: []
+    groupByAlertDetails: []
+    groupByCustomDetails: []
+eventGroupingSettings:
+  aggregationKind: SingleAlert
+entityMappings:
+  - entityType: Process
+    fieldMappings:
+      - identifier: CommandLine
+        columnName: ProcessCommandLine
+  - entityType: Process
+    fieldMappings:
+      - identifier: CommandLine
+        columnName: InitiatingProcessFileName
+suppressionDuration: 5h
+suppressionEnabled: false
+version: 1.0.0
+kind: Scheduled
+

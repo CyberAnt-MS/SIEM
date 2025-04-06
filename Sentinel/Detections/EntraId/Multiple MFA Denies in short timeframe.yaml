@@ -1,0 +1,55 @@
+id: 0070b61b-45fe-42db-bbac-758850f3dc5f
+name: Multiple MFA Denies in short timeframe
+description: |
+  'Identifies when a user has multiple MFA denies in a short timeframe.'
+severity: Informational
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SignInLogs
+      - AADNonInteractiveUserSignInLogs
+  - connectorId: BehaviorAnalytics
+    dataTypes:
+      - SignInLogs
+      - AADNonInteractiveUserSignInLogs
+queryFrequency: 1d
+queryPeriod: 1d
+triggerOperator: gt
+triggerThreshold: 0
+status: Available
+tactics:
+  - Persistence
+relevantTechniques:
+  - T1098
+query: |
+  let threshold = 10;
+  let timeWindow = 10m;
+  UnifiedSignInLogs()
+  | where Status has "MFA Denied; user declined the authentication"
+        or Status has "MFA denied; Phone App Reported Fraud"
+  | extend
+      timestamp = TimeGenerated,
+      Name       = tostring(split(UserPrincipalName, "@", 0)[0]),
+      UPNSuffix  = tostring(split(UserPrincipalName, "@", 1)[0])
+  | summarize
+      DeniedAttempts = count(),
+      StartTime      = min(TimeGenerated),
+      EndTime        = max(TimeGenerated)
+      by bin(TimeGenerated, timeWindow),
+        UserPrincipalName,
+        ResultType,
+        CorrelationId,
+        Location
+  | where DeniedAttempts >= threshold
+  | extend Severity = case(
+      DeniedAttempts <  5, "Medium",
+      DeniedAttempts >= 10, "High",
+      "Informational"
+    )
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: UserPrincipalName
+version: 1.0.1
+kind: Scheduled

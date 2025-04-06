@@ -1,0 +1,50 @@
+id: 92500490-98f6-4c27-a117-847ce063436a
+name: Azure VM Run Command or Custom Script execution detected
+description: |
+  'A user has either initiated a Azure VM Run Command or Custom Script execution.'
+severity: Medium
+requiredDataConnectors:
+  - connectorId: AzureActivity
+    dataTypes:
+      - AzureActivity
+queryFrequency: 30m
+queryPeriod: 35m
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - LateralMovement
+relevantTechniques:
+ - T1059
+query: |
+  AzureActivity 
+  | where CategoryValue == "Administrative"
+  | where OperationNameValue =~ "Microsoft.Compute/virtualMachines/runCommand/action"
+  | extend VMName = tostring(todynamic(Properties).resource)
+  | summarize make_list(ActivityStatusValue), TimeGenerated = max(TimeGenerated) by CorrelationId, CallerIpAddress, Caller, ResourceGroup, VMName
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: false
+    reopenClosedIncident: false
+    lookbackDuration: 5h
+    matchingMethod: AllEntities
+    groupByEntities: []
+    groupByAlertDetails: []
+    groupByCustomDetails: []
+eventGroupingSettings:
+  aggregationKind: AlertPerResult
+entityMappings:
+- entityType: Account
+  fieldMappings:
+    - identifier: AadUserId
+      columnName: Caller
+- entityType: Host
+  fieldMappings:
+    - identifier: HostName
+      columnName: VMName
+suppressionDuration: 5h
+suppressionEnabled: false
+version: 1.0.0
+kind: Scheduled
+
